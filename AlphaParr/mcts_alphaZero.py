@@ -8,8 +8,9 @@ network to guide the tree search and evaluate the leaf nodes
 
 import numpy as np
 import copy
-
+from operator import itemgetter
 from stateobs import VecNorm
+from config import scheConfig
 
 EPSILON = 0.20
 DIRNOISE = 0.3
@@ -19,6 +20,11 @@ def softmax(x):
     probs /= np.sum(probs)
     return probs
 
+def rollout_policy_fn(board):
+    """a coarse, fast version of policy_fn used in the rollout phase."""
+    # rollout randomly
+    action_probs = np.random.rand(len(board.availables))
+    return zip(board.availables, action_probs)
 
 class TreeNode(object):
     """A node in the MCTS tree.
@@ -123,18 +129,46 @@ class MCTS(object):
         # for the current player.
         current_state = self._vec_norm.ob_norm(state.current_state())
         legal_actions = state.availables
-        action_probs, leaf_value = self._policy(current_state, legal_actions)
         
+        action_probs, _ = self._policy(current_state, legal_actions)        
         # Check for end of game.
         end, winner = state.game_end()
         if not end:
             node.expand(action_probs)
-        else:
-            # for end state，return the "true" leaf_value
-            leaf_value = self._vec_norm._refilt(winner)
+
+        leaf_value = self._evaluate_rollout(state)
         # Update value and visit count of nodes in this traversal.
         node.update_recursive(leaf_value)
+        
+    def _policy_cal(self, state):
+        current_state = self._vec_norm.ob_norm(state.current_state())
+        legal_actions = state.availables
+        
+        action_probs, _ = self._policy(current_state, legal_actions)
+        acts, prob = zip(*action_probs)
+        
+        prob = np.array(prob) 
+        prob /= prob.sum()
+        return acts, prob
 
+    def _policy_rule(self, state):
+        acts = state.availables
+        partFea, _ = state.current_state()
+        partFeaMat = partFea[:-scheConfig.machNum].reshape(scheConfig.partNum,-1)
+        
+        # feaCol = partFeaMat[acts,0]#spt
+        # feaCol = -partFeaMat[acts,1]#ps
+        feaCol = partFeaMat[acts,5]#wspt
+        # feaCol = -partFeaMat[acts,6]#wmdd
+        # feaCol = -partFeaMat[acts,7]#atc
+        # feaCol = -partFeaMat[acts,8]
+        index = np.argmin(feaCol)
+        
+        prob = np.zeros(len(acts))
+        prob[index] = 1
+        return acts, prob
+        
+        
     def get_move_probs(self, state, temp=1e-3):
         """Run all playouts sequentially and return the available actions and
         their corresponding probabilities.
@@ -151,6 +185,24 @@ class MCTS(object):
         acts, visits = zip(*act_visits)
         act_probs = softmax(1.0/temp * np.log(np.array(visits) + 1e-10))
         return acts, act_probs
+
+    def _evaluate_rollout(self, state, limit=1000):
+        """Use the rollout policy to play until the end of the game,
+        returning +1 if the current player wins, -1 if the opponent wins,
+        and 0 if it is a tie.
+        """
+        for i in range(limit):
+            end, winner = state.game_end()
+            if end:
+                break
+            action_probs = rollout_policy_fn(state)
+            max_action = max(action_probs, key=itemgetter(1))[0]
+            state.do_move(max_action)
+        else:
+            # If no break from the loop, issue a warning.
+            print("WARNING: rollout reached move limit")
+        winner = self._vec_norm._refilt(winner)
+        return winner
 
     def update_with_move(self, last_move):
         """Step forward in the tree, keeping everything we already know
@@ -185,11 +237,14 @@ class MCTSPlayer(object):
 
     def get_action(self, board, temp=1e-3, return_prob=0):
         sensible_moves = board.availables
+        # acts = board.availables
         # the pi vector returned by MCTS as in the alphaGo Zero paper
         move_probs = np.zeros(board.action_size)
         if len(sensible_moves) > 0:
-            temp = 1 if self._is_selfplay else 1e-3
-            acts, probs = self.mcts.get_move_probs(board, temp)
+            # acts, probs = self.mcts._policy_cal(board)
+            acts, probs = self.mcts._policy_rule(board)
+            # print(probs)
+            # probs = np.ones(len(acts))/len(acts)
             move_probs[list(acts)] = probs
             move = np.random.choice(acts, p=probs)
                 

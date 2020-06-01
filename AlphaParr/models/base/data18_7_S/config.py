@@ -10,7 +10,7 @@ class ScheConfig:
 
 class RandomConfig:
     def __init__(self):
-        self.partNum, self.machNum = 15, 5
+        self.partNum, self.machNum = 18, 7
         self.tight = 0.5
         self.priority = 6
         
@@ -25,7 +25,7 @@ class RandomConfig:
 
 class RanMaxConfig:
     def __init__(self):
-        self.partNum, self.machNum = 20, 8
+        self.partNum, self.machNum = 18, 7
         self.tight = 0.5
         self.priority = 6
         

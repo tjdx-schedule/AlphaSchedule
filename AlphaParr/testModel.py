@@ -8,17 +8,17 @@ from excel import ExcelLog
 
 if __name__ == '__main__':
     start = time.time()    
-    logger = ExcelLog('bestNet',True)
+    logger = ExcelLog('atc',False)
     
     n_games = 100
     n_playout = 200
-    c_puct = 1.5
+    c_puct = 1.0
 
     path = './models/'
     best_net_name = path + 'best.model'
     update_net_name = path + 'current.model'
-    best_net = PolicyValueNet(model_file=best_net_name,use_gpu=True)
-    update_net = PolicyValueNet(model_file=update_net_name,use_gpu=True)
+    best_net = PolicyValueNet(use_gpu=False)#model_file=best_net_name,
+    update_net = PolicyValueNet(use_gpu=False)#model_file=update_net_name,
     
     best_ratio, vec_norm, _ = update_net.save_dict
     print('best model win_ratio:', best_ratio)

@@ -21,27 +21,28 @@ class StateObserve:
                
         obs = [partFea,machFea]
         return obs
- 
+    
     def partEncode(self):
         e = 1e-10
         
         partFeature = []
         cur = np.min(self.scheduler.mach)
         for partIndex in range(self.partNum):
-             hours, deadline, priority = self.scheduler.part[partIndex]
-             deadline_cur = (deadline - cur)*(deadline > 0)
-             deadline_cur_hours = deadline_cur - hours
-             priority_hours = priority/(hours+e)
+              hours, deadline, priority = self.scheduler.part[partIndex]
+              deadline_cur = (deadline - cur)*(deadline > 0)
+              deadline_cur_hours = deadline_cur - hours
+              priority_hours = priority/(hours+e)
              
-             slack = -(deadline_cur_hours)/(hours+e)
-             wspt = -priority_hours
-             wmdd = -max(hours,deadline_cur)/(priority+e)
-             atc = math.exp(-max(deadline_cur_hours,0)/(self._h*hours+e))*priority_hours
-             wcovert = max(1-max(deadline_cur_hours,0)/(self._Kt*hours+e),0)*priority_hours
+              slack = -(deadline_cur_hours)/(hours+e)
+              wspt = hours/(priority+e)
+              wmdd = -max(hours,deadline_cur)/(priority+e)
+              atc = math.exp(-max(deadline_cur_hours,0)/(self._h*hours+e))*priority_hours
+              wcovert = max(1-max(deadline_cur_hours,0)/(self._Kt*hours+e),0)*priority_hours
              
-             feature = [hours,deadline_cur,deadline_cur_hours,
+              feature = [hours, priority,
+                        deadline_cur,deadline_cur_hours,
                         slack,wspt,wmdd,atc,wcovert]
-             partFeature.extend(feature)
+              partFeature.extend(feature)
         
         machTime = (self.scheduler.mach - cur).tolist()
         partFeature.extend(machTime)

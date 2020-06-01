@@ -9,6 +9,10 @@ import numpy as np
 import copy
 from operator import itemgetter
 from gantt import TreeLogger
+from config import scheConfig
+
+EPSILON = 0.5
+DIRNOISE = 0.3
 
 def rollout_policy_fn(board):
     """a coarse, fast version of policy_fn used in the rollout phase."""
@@ -24,6 +28,34 @@ def policy_value_fn(board):
     action_probs = np.ones(len(board.availables))/len(board.availables)
     return zip(board.availables, action_probs), 0
 
+def rule_fn(board):
+    acts = board.availables
+    len_acts = len(acts)
+    delta_prob = 0.04
+    noise_coef = 0.04
+    
+    partFea, _ = board.current_state()
+    partFeaMat = partFea[:-scheConfig.machNum].reshape(scheConfig.partNum,-1)
+    
+    # feaCol = partFeaMat[acts,0]#spt
+    # feaCol = -partFeaMat[acts,1]#ps
+    # feaCol = partFeaMat[acts,5]#wspt
+    # feaCol = -partFeaMat[acts,6]#wmdd
+    feaCol = -partFeaMat[acts,7]#atc
+    # feaCol = -partFeaMat[acts,8]#wcovert
+    index = np.argmin(feaCol)
+        
+    prob = np.ones(len_acts)/len_acts
+    if len_acts > 1:
+        prob -= delta_prob/len_acts
+        prob[index] += delta_prob
+        
+        ran_arr = np.random.rand(len_acts)
+        ran_arr = ran_arr-ran_arr.mean()
+        noise_arr = noise_coef * ran_arr
+        
+        prob += noise_arr
+    return zip(acts, prob), 0
 
 class TreeNode(object):
     """A node in the MCTS tree. Each node keeps track of its own value Q,
@@ -52,7 +84,7 @@ class TreeNode(object):
         Return: A tuple of (action, next_node)
         """
         return max(self._children.items(),
-                   key=lambda act_node: act_node[1].get_value(c_puct))
+                    key=lambda act_node: act_node[1].get_value(c_puct))
 
     def update(self, leaf_value):
         """Update node values from leaf evaluation.
@@ -125,11 +157,10 @@ class MCTS(object):
             # Greedily select next move.
             action, node = node.select(self._c_puct)
             state.do_move(action)
-
-        action_probs, _ = self._policy(state)
         # Check for end of game
         end, winner = state.game_end()
         if not end:
+            action_probs, _ = self._policy(state)#rule_fn(state)
             node.expand(action_probs)
         # Evaluate the leaf node by random rollout
         leaf_value = self._evaluate_rollout(state)

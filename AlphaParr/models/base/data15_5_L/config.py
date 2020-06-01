@@ -11,10 +11,10 @@ class ScheConfig:
 class RandomConfig:
     def __init__(self):
         self.partNum, self.machNum = 15, 5
-        self.tight = 0.5
-        self.priority = 6
+        self.tight = 0.7
+        self.priority = 10
         
-        self.maxTime = 50
+        self.maxTime = 100
         self.minTime = 5
         
         self.testSeed = 0
@@ -25,11 +25,11 @@ class RandomConfig:
 
 class RanMaxConfig:
     def __init__(self):
-        self.partNum, self.machNum = 20, 8
-        self.tight = 0.5
-        self.priority = 6
+        self.partNum, self.machNum = 15, 5
+        self.tight = 0.7
+        self.priority = 10
         
-        self.maxTime = 50
+        self.maxTime = 100
         self.minTime = 5
         
         self.testSeed = 0

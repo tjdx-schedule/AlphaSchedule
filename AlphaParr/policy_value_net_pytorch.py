@@ -25,7 +25,7 @@ class Net(nn.Module):
     """policy-value network module"""
     def __init__(self, partNum,machNum):
         super(Net, self).__init__()
-        input_size = 8*partNum+machNum
+        input_size = 9*partNum+machNum
         # common layers        
         self.fc0 = nn.Linear(input_size,512)
         self.fc1 = nn.Linear(512,512)
