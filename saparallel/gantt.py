@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import random
 
-def plotGantt(partList,machineMat):
+def plotGantt(partList,machineNum):
     plt.rcParams['font.sans-serif']=['SimHei'] # 用来正常显示中文标签  
     plt.rcParams['axes.unicode_minus']=False # 用来正常显示负号  
     
@@ -10,26 +10,25 @@ def plotGantt(partList,machineMat):
     colors = ("red","yellow","green","brown","blue") # 颜色，不够再加
     x_label=u"调度时刻" # 设置x轴label
     
-    partLen, orderLen, _ = partList.shape
-    labels= ['M'+str(i) for i in range(orderLen)]
+    partLen, _ = partList.shape
+    labels= ['M'+str(i) for i in range(machineNum)]
     fig,ax=plt.subplots(figsize=(10,5))
     count=0;
     
     for i in range(partLen):
         color = randomcolor()#colors[i]
         partArr = partList[i]
-        # color = randomcolor()
-        for j in range(orderLen):
-            index = machineMat[i][j]
-            timeTuple = (partArr[j,0], partArr[j,1] - partArr[j,0])
-            ax.broken_barh([timeTuple],\
-                        ((height+interval)*index+interval,height), \
-                        facecolors= color)
-            operaStr = str(i) + "-" + str(j)
-            plt.text(partArr[j,0], (height+interval)*(index+0.5),\
-                     operaStr,fontsize='large') 
-            
-            count = max(count,partArr[j,1])
+
+        index = partArr[2]
+        timeTuple = (partArr[0], partArr[1] - partArr[0])
+        ax.broken_barh([timeTuple],\
+                    ((height+interval)*index+interval,height), \
+                    facecolors= color)
+        operaStr = str(i) + "-" + str(0)
+        plt.text(partArr[0], (height+interval)*(index+0.5),\
+                 operaStr,fontsize='large') 
+        
+        count = max(count,partArr[1])
        
     ax.set_ylim(0, (height+interval)*len(labels)+interval)
     ax.set_xlim(0, count+2)

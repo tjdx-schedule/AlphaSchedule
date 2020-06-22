@@ -40,7 +40,7 @@ class GaOpeartor:
         if need_fit:
             m = 1 + math.log(N)
             n = min(n+1,N)
-            fitness = int(n**(1/m))/gradeArr
+            fitness = int(n**(1/m))/(gradeArr+1e-3)
         return gradeArr,fitness
     
     def _calIndivi(self, individual,isPlot = False):
@@ -154,7 +154,7 @@ class GeneAlgorithm:
     def elitePolicy(self):
         # self.population[0] = self.GaOp.bestIndi
         # self.population[0:self.GaOp.eliteNum] = self.GaOp.eliteGroup
-        self.population = self.tempPopu.copy()
+        self.population = self.tempPopu
     
 if __name__ == '__main__':
     ga = GeneAlgorithm()

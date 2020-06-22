@@ -39,8 +39,8 @@ class SimulatedAnnealing:
     def __init__(self):
         self.T0 = 1000  # start temperature
         self.Tend = 1e-3  # end temperature
-        self.L = 38  # iteration times during every  temperature
-        self.q = 0.9  # Cooling rate
+        self.L = 345  # iteration times during every  temperature
+        self.q = 0.5  # Cooling rate
 
         self.schConfig = scheConfig
         self.partNum = self.schConfig.partNum
