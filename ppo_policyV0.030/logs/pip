@@ -1,0 +1,4 @@
+python main.py --num-processes 16 --num-steps 512 --num-mini-batch 32 --log-interval 4 --env-name ml-agent-45-20 --eval-interval 100 --eval-num 80 --excel-save --load 
+conda activate pytorch_gpu
+
+python enjoy.py
