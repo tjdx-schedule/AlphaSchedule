@@ -9,7 +9,7 @@ class Logger:
         pass
 
     def reset(self):
-        self.grade = np.float('inf')
+        self.grade = float('inf')
         self.act_seq = None
     
     def update(self,grade,act_seq):

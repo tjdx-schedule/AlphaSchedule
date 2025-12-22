@@ -27,7 +27,7 @@ class ExcelDeal:
     def getPaLi(self,name):
         index = self.getIndex(name)
         mat,size = self.getStaMat(index)
-        mat = np.array(mat,dtype=np.int)
+        mat = np.array(mat,dtype=np.int_)
         paLi,machLi = self.creatPaMa(mat,size)
         return paLi,machLi
     

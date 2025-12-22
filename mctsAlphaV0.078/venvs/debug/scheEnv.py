@@ -45,7 +45,7 @@ class ScheEnv(gym.Env):
         return self.canvas_obs,0,done,info
         
     def getActionMask(self):
-        vObs = np.array([0],dtype=np.float)
+        vObs = np.array([0],dtype=np.float64)
         partAvai = self.availables
         
         partMask = np.zeros(self.partNum)
