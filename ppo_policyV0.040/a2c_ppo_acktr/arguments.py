@@ -2,6 +2,8 @@ import argparse
 
 import torch
 
+from a2c_ppo_acktr.game.EnvirConf import config
+
 
 def get_args():
     parser = argparse.ArgumentParser(description='RL')
@@ -120,9 +122,24 @@ def get_args():
         default='ml-agent',
         help='environment to train on (default: ml-agent)')
     parser.add_argument(
-        '--env-mode',
-        default= None,
-        help='choose ZhangeEnv state is value or canvas')
+        '--part-num',
+        type=int,
+        default=15,
+        help='part number set')
+    parser.add_argument(
+        '--mach-num',
+        type=int,
+        default=-1,
+        help='mach number set, -1 means auto')
+    parser.add_argument(
+        '--dist-type',
+        default='h',
+        help='environment distribution parameter (h/l/m)')
+    parser.add_argument(
+        '--run-hours',
+        type=float,
+        default=float('inf'),
+        help='run hours, default is forever')
     parser.add_argument(
         '--eval-num',
         type=int,
@@ -155,4 +172,69 @@ def get_args():
 
     args.cuda = not args.no_cuda and torch.cuda.is_available()
 
+    return args
+
+
+def get_test_args():
+    parser = argparse.ArgumentParser(description='RL')
+    parser.add_argument(
+        '--test-num',
+        type=int,
+        default=100,
+        help='test number')
+    parser.add_argument(
+        '--num-processes',
+        type=int,
+        default=10,
+        help='how many training CPU processes to use (default: 8)')
+    parser.add_argument(
+        '--env-name',
+        default='ml-agent',
+        help='environment to train on (default: ml-agent)')
+    parser.add_argument(
+        '--part-num',
+        type=int,
+        default=15,
+        help='part number set')
+    parser.add_argument(
+        '--mach-num',
+        type=int,
+        default=-1,
+        help='mach number set, -1 means auto')
+    parser.add_argument(
+        '--dist-type',
+        default='h',
+        help='environment distribution parameter (h/l/m)')
+    parser.add_argument(
+        '--load-dir',
+        default='./trained_models/ppo',
+        help='directory to save agent logs (default: ./trained_models/)')
+    parser.add_argument(
+        '--non-det',
+        action='store_true',
+        default=False,
+        help='whether to use a non-deterministic policy')
+    parser.add_argument(
+        '--not-eval-load',
+        action='store_true',
+        default=False,
+        help='load eval saved model')
+    parser.add_argument(
+        '--gpu',
+        type=int,
+        default=0,
+        help='CUDA training,-1 is no cuda,num(0/1) is gpu num')
+    args = parser.parse_args()
+    return args
+
+
+def argsECInit(isTrain=True):
+    if isTrain:
+        args = get_args()
+    else:
+        args = get_test_args()
+    config.updateParam(partNum=args.part_num, machNum=args.mach_num if args.mach_num > 0 else None, distType=args.dist_type)
+    EC = config.envConfig
+    args.env_name = args.env_name + '-' + str(EC.partNum) + '-' + \
+        str(EC.machNum) + '-' + EC.distType
     return args

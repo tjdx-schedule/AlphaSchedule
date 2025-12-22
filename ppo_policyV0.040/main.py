@@ -12,7 +12,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from a2c_ppo_acktr import algo, utils
-from a2c_ppo_acktr.arguments import get_args
+from a2c_ppo_acktr.arguments import argsECInit
 from a2c_ppo_acktr.game.envs import make_vec_envs
 from a2c_ppo_acktr.game.ExcelLog import ExcelLog
 from a2c_ppo_acktr.model import Policy
@@ -22,7 +22,7 @@ from evaluation import evaluate,save_model
 
 
 def main():
-    args = get_args()
+    args = argsECInit()
 
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
@@ -58,7 +58,7 @@ def main():
             vec_norm = get_vec_normalize(envs)
             vec_norm.ret_rms.mean, vec_norm.ret_rms.var = mean,var
             print('Transfer load success!')
-        log = ExcelLog(None,args,args.excel_save)
+        log = ExcelLog(args.env_name,args,args.excel_save)
         agent = algo.PPO(
             actor_critic,
             args.clip_param,
@@ -94,8 +94,10 @@ def main():
     
     start_time = time.time()
     j = 0
+    running_time = time.time() - start_time
+    terminal_hours = args.run_hours
     try:
-        while True:
+        while running_time/3600 < terminal_hours:
             j += 1
             for step in range(args.num_steps):
                 # Sample actions
@@ -141,28 +143,31 @@ def main():
     
             if j % args.log_interval == 0 and len(episode_rewards) > 1:
                 total_num_steps = (j + 1) * args.num_processes * args.num_steps
+                running_time = time.time() - start_time
                 print(
                     "Time {}: Updates {}, num timesteps {}, Last {} training episodes:\n\
 entropy/value/policy/loss {:.3f}/{:.3f}/{:.3f}/{:.4f}, min/mean/max reward {:.3f}/{:.3f}/{:.3f}"
-                    .format(time.strftime("%Hh %Mm %Ss",time.gmtime(time.time() - start_time)),
+                    .format(time.strftime("%m-%d %Hh %Mm %Ss",time.gmtime(running_time)),
                             j, total_num_steps,len(episode_rewards), 
                             dist_entropy, value_loss,action_loss,loss,
                             np.min(episode_rewards),np.mean(episode_rewards),np.max(episode_rewards)))
                 if j % (args.log_interval * 3) == 0 and len(episode_rewards) >= deque_size:
-                    log.saveTrain(np.mean(episode_rewards),time.strftime("%Hh %Mm %Ss",time.gmtime(time.time() - start_time)))
+                    log.saveTrain(np.mean(episode_rewards),time.strftime("%m-%d %Hh %Mm %Ss",time.gmtime(running_time)))
                     log.saveLoss(dist_entropy, value_loss,action_loss,loss)
                             
             if (args.eval_interval is not None and len(episode_rewards) > 1
                     and j % args.eval_interval == 0):
                 ret_rms = getattr(utils.get_vec_normalize(envs), 'ret_rms', None)
                 evalMax,mean_eval = evaluate(actor_critic, ret_rms, args.env_name, None,
-                                   args.num_processes, eval_log_dir, device_gpu, args.env_mode,
+                                   args.num_processes, eval_log_dir, device_gpu, None,
                                    log.getEval, args.algo, args.save_dir,args.eval_num)
                 log.setEval(evalMax)
                 log.saveTest(mean_eval)
             if j % args.log_interval == 0 and len(episode_rewards) > 1:
                 print("")
     except KeyboardInterrupt:
+        print('keyboard interrupt!')
+    finally:
         save_model(args.save_dir,args.env_name,args.algo,
            actor_critic,getattr(utils.get_vec_normalize(envs), 'ret_rms', None),
            agent,log)
