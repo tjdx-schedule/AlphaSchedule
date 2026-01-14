@@ -4,184 +4,140 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-AlphaSchedule applies AlphaZero-style reinforcement learning methods to scheduling problems, specifically job-shop scheduling with deadlines and priorities. The repository contains multiple algorithm implementations and versions exploring different approaches to the scheduling optimization problem.
+AlphaSchedule applies AlphaZero-style methods to job-shop scheduling optimization. The goal is to minimize weighted tardiness by assigning jobs to machines. Multiple algorithm implementations are provided for comparison:
 
-## Problem Domain
+- **MCTS with Policy-Value Networks** (`mctsAlphaV0.077/`, `mctsAlphaV0.078/`) - AlphaZero-style tree search
+- **PPO (Proximal Policy Optimization)** (`sci1-ppoV0.040/`, `ppo_policyV0.040/`) - Reinforcement learning
+- **Genetic Algorithm** (`gaV0.021jobshop/`, `gaParallel/`) - Evolutionary optimization
+- **Simulated Annealing** (`saparallel/`) - Metaheuristic search
+- **PSO (Particle Swarm Optimization)** (`psoParallel/`) - Swarm intelligence
 
-The core scheduling problem:
-- **Jobs**: Each has processing time, deadline, and priority
-- **Machines**: Multiple machines can process jobs in parallel
-- **Objective**: Minimize weighted tardiness (priority × lateness for late jobs)
-- **Environment**: Jobs are assigned to machines sequentially; the scheduler chooses which job to schedule next
+## Development Commands
 
-## Repository Structure
+Use `uv` to manage Python and run scripts.
 
-### Algorithm Implementations
-
-The repository contains several parallel implementations organized by approach:
-
-1. **MCTS + Policy Network** (`mctsAlphaV0.0XX/`): AlphaZero-style approach combining Monte Carlo Tree Search with neural network policy guidance
-   - Latest version: `mctsAlphaV0.078/`
-   - Uses beam search with MCTS
-   - Optional simulated annealing post-processing
-   - Policy-value network based on ResNet architecture
-
-2. **PPO** (`ppo_policyV0.0XX/`): Proximal Policy Optimization using actor-critic
-   - Latest version: `ppo_policyV0.040/`
-   - Vectorized parallel environments
-   - Based on modified a2c_ppo_acktr implementation
-
-3. **Genetic Algorithm** (`gaV0.021jobshop/`, `gaParallel/`): Traditional optimization baseline
-   - Uses crossover and mutation operations on job sequences
-
-4. **Other Baselines**: Simulated annealing (`saparallel/`), Particle Swarm Optimization (`psoParallel/`)
-
-### Key Components Common Across Implementations
-
-Each algorithm version typically contains:
-
-- **Environment/Scheduler** (`scheduler.py`, `scheEnv.py`, `EnvirConf.py`):
-  - `EnvirConf.py`: Configuration for problem size (partNum, machNum), difficulty distribution ('h'/'m'/'l'), and seed management
-  - `Scheduler`: Core scheduling logic - assigns jobs to machines, tracks state, calculates objective
-  - `ScheEnv`: Gym-compatible wrapper around Scheduler
-
-- **Observation/State** (`obs.py`, `stateobs.py`):
-  - Converts scheduler state into 2D feature maps for neural network input
-  - Features: job characteristics (time, deadline, priority) and machine states
-
-- **Policy/Model** (`policy_value_net_pytorch.py`, `mcts_policy.py`, `model.py`):
-  - Neural network architectures for action selection
-  - MCTS versions use ResNet-based policy-value networks
-  - PPO uses separate policy and value heads
-
-- **Logging** (`excel.py`, `ExcelLog.py`): Excel-based logging for experiments
-
-- **Visualization** (`gantt.py`): Gantt chart generation for schedule visualization
-
-## Development Workflow
-
-### MCTS Versions (mctsAlphaV0.0XX)
-
-**Dependencies:**
+### PPO Training
 ```bash
-cd mctsAlphaV0.078
-pip install -r requirements.txt
+cd sci1-ppoV0.040/
+uv run python main.py --env-name ScheduleEnv --part-num 65 --dist-type h --num-processes 8 --run-hours 24
 ```
 
-**Testing a trained policy:**
+### PPO Evaluation
 ```bash
-cd mctsAlphaV0.078
-python testPolicy.py
+cd sci1-ppoV0.040/
+uv run python enjoy.py --env-name ScheduleEnv --part-num 65 --dist-type h --load-dir ./trained_models/
 ```
 
-**Key configuration:**
-- Edit `venvs/EnvirConf.py` to change problem size and distribution
-- Model weights stored in `models/` directory with naming pattern `{partNum}-{machNum}-weight.model`
-- Test modes: `pure_policy`, `mcts_policy`, `mcts_policy_sa` (with simulated annealing)
-
-**Architecture notes:**
-- `Game` class manages interaction between environment and player
-- `MCTSPlayer` implements beam search MCTS with optional SA refinement
-- Supports parallel environment execution via `make_vec_envs` for efficient rollouts
-- `venvs/baselines_com/vec_env/`: Custom vectorized environment wrappers for parallel execution
-
-### PPO Versions (ppo_policyV0.0XX)
-
-**Training:**
+### MCTS Testing
 ```bash
-cd ppo_policyV0.040
-python main.py --env-name ml-agent --num-processes 8 --num-steps 1024
+cd mctsAlphaV0.077/
+uv run python testPolicy.py
 ```
 
-**Evaluation:**
+### Genetic Algorithm
 ```bash
-cd ppo_policyV0.040
-python evaluation.py --load-dir ./trained_models/ppo --eval-num 100
+cd gaV0.021jobshop/
+uv run python main.py
 ```
 
-**Key arguments (see `a2c_ppo_acktr/arguments.py`):**
-- `--load`: Resume training from checkpoint
-- `--transfer`: Transfer learning from pre-trained model
-- `--excel-save`: Enable Excel logging
-- `--eval-interval`: Evaluation frequency during training
-- `--num-processes`: Number of parallel environments
-- `--save-dir`: Model checkpoint directory
-
-**Architecture notes:**
-- `a2c_ppo_acktr/`: Contains PPO algorithm implementation, model, and storage
-- `a2c_ppo_acktr/game/`: Environment wrappers and configuration
-- Action masking prevents invalid actions (selecting already-scheduled jobs)
-- Separate observation spaces for policy (2D feature map) and value (scalar)
-
-### GA Versions (gaV0.021jobshop, gaParallel)
-
-**Running:**
+### Install Dependencies
 ```bash
-cd gaV0.021jobshop
-python main.py
+uv pip install -r requirements.txt
 ```
 
-**Configuration:**
-- Edit `config.py` for problem parameters
-- GA operates on job sequence permutations
-- `genpart.py`: Job generation and chromosome encoding
+## Core Architecture
 
-## Important Conventions
+### Scheduling Environment
 
-### Environment Modes
-All implementations support three modes:
-- `'train'`: Training instances with random seed incrementation
-- `'test'`: Fixed test instances for evaluation
-- `'val'`: Validation instances
+All algorithms share a common scheduling abstraction:
 
-Seed management in `EnvirConf.py`:
-- `trainSeed`: Random for each run
-- `testSeed`: Fixed at 0, increments per episode
-- `valSeed`: Fixed at 1000, increments per episode
+- **`scheduler.py`** - Core `Scheduler` class managing job-machine assignment state
+- **`EnvirConf.py`** - `EnviroConfig` class defining problem parameters
+- **`genpart.py`** - `GenPart` class generating job instances with reproducible seeds
 
-### State Representation
-- Jobs and machines represented as matrices
-- Job matrix: `[processing_time, deadline, priority]` per job
-- Machine matrix: Current completion time per machine
-- Observation: Multi-channel 2D feature map (width × height × features)
+### Environment Configuration (`EnvirConf.py`)
+
+Key parameters in `EnviroConfig`:
+- `partNum` - Number of jobs (default: 65)
+- `machNum` - Number of machines (derived: `(partNum - 5) // 10 * 5`)
+- `distType` - Distribution tightness: 'h' (high), 'm' (medium), 'l' (low)
+- Seeds: `trainSeed` (random), `testSeed` (0), `valSeed` (1000) for reproducibility
+
+Distribution parameters by type:
+```python
+'h': [tight=0.3, priority=20, maxTime=200]
+'m': [tight=0.5, priority=12, maxTime=125]
+'l': [tight=0.65, priority=6, maxTime=50]
+```
+
+### Job Representation
+
+Jobs are numpy arrays with columns:
+- Column 0: Processing time
+- Column 1: Due date (deadline)
+- Column 2: Priority weight
 
 ### Action Space
-- Discrete: Select which job to schedule next (0 to partNum-1)
-- Action masking ensures only unscheduled jobs are selectable
-- Environment automatically assigns to earliest-available machine
 
-### Objective Calculation
-```python
-grade = -sum(max(0, -tardiness) * priority for each job)
-```
-Lower grade is better (minimize weighted tardiness).
+Actions select which job to schedule next. The scheduler assigns it to the machine with minimum current load (earliest availability).
 
-## Model Persistence
+### Reward/Grade Calculation
 
-**MCTS models:**
-- Stored as PyTorch state dicts
-- Format: `{partNum}-{machNum}-weight.model`
-- Contains: `com_base`, `policy_head`, `dist0_fc`, `value_head` components
+- **Grade** = sum of (tardiness × priority) for late jobs
+- Lower grade = better solution
+- Tardiness = max(0, completion_time - due_date)
 
-**PPO models:**
-- Stored using torch.save with agent, normalizer, and logger
-- Format: `{env_name}.pt`
-- Load with `torch.load()` and restore to agent
+## PPO Implementation (`sci1-ppoV0.040/`)
 
-## Version Differences
+### Key Files
+- `main.py` - Training loop with parallel environments
+- `a2c_ppo_acktr/model.py` - Policy network architecture
+- `a2c_ppo_acktr/algo/ppo.py` - PPO update algorithm
+- `a2c_ppo_acktr/storage.py` - Rollout buffer
+- `a2c_ppo_acktr/arguments.py` - Hyperparameters
+- `a2c_ppo_acktr/game/envs.py` - Vectorized environment wrapper
+- `a2c_ppo_acktr/game/scheEnv.py` - Gym-compatible scheduling environment
 
-- **V0.070**: Original MCTS implementation, simpler environment
-- **V0.075ParallelProcess**: Added parallel environment rollouts
-- **V0.077**: Refined MCTS with better beam search
-- **V0.078**: Latest, cleaned up vectorized environments
-- **ppo V0.030**: Earlier PPO version
-- **ppo V0.040**: Current PPO with improved training stability
+### Key Hyperparameters
+- `--num-processes 8` - Parallel environment count
+- `--num-steps 1024` - Steps per rollout
+- `--ppo-epoch 4` - Update epochs per batch
+- `--clip-param 0.1` - PPO clipping threshold
+- `--lr 2.5e-4` - Learning rate
+- `--gamma 1.0` - Discount factor (undiscounted)
 
-When working across versions, note that environment implementations (`scheEnv.py`, `scheduler.py`) may have slight API differences.
+## MCTS Implementation (`mctsAlphaV0.077/`)
 
-## Testing and Debugging
+### Key Files
+- `testPolicy.py` - Main execution script
+- `mcts_policy.py` - `MCTS` and `MCTSPlayer` classes with UCB selection
+- `policy_value_net_pytorch.py` - Neural network for policy/value prediction
+- `venvs/game.py` - Game wrapper for MCTS interface
 
-- Test scripts typically run multiple episodes and report min/mean/max grades
-- Gantt chart visualization available via `plotGantt()` on completed schedules
-- `past/` and `debug/` directories contain older/experimental code
-- Log files (`logs.txt`, `log.txt`) contain training/evaluation history
+### Search Parameters
+- `beam_size` - Number of nodes to expand per level
+- Dirichlet noise (`EPSILON=0.4`, `DIRNOISE=0.1`) for exploration at root
+
+## Genetic Algorithm (`gaV0.021jobshop/`)
+
+### Key Files
+- `main.py` - Entry point
+- `ga.py` - `GeneAlgorithm` and `GaOpeartor` classes
+- `genpart.py` - Job generation and `Scheduler` class
+
+### GA Parameters
+- `popuSize` - Population size (default: 50)
+- `mutateRate` - Mutation probability (default: 0.2)
+- `gap` - Generation gap for crossover (default: 0.75)
+
+## Logging
+
+Results are logged to Excel files via `ExcelLog` class (in `excel.py` or `ExcelLog.py`). Training metrics, test grades, and loss values are tracked.
+
+## Common Patterns
+
+### Mode-based Seed Management
+All algorithms use `mode` parameter ('train', 'test', 'val') to select appropriate random seeds for reproducibility across experiments.
+
+### Plotting
+Gantt chart visualization available via `gantt.py` / `plotGantt()` function.
